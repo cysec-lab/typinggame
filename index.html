@@ -1,0 +1,475 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ <meta name="GENERATOR" content="UTF-8 Writer" />
+<title>typinggame</title>
+
+<script>
+document.onkeydown = typeGame;  //キー押下時に関数typeGame()を呼び出す
+
+//文字を格納する配列
+var moji = new Array("0","1","2","3","4","5","6","7","8","9");//キーコードを格納する配列　//0~9に改造
+var kcode = new Array(48,49,50,51,52,53,54,55,56,57);
+var kc = new Array();//0～9までの3~10桁の乱数を格納する配列
+var rnd = new Array();
+var notcorrect=new Array();
+
+var mnt=60;
+var idnum;//グローバル変数群
+var mondai = "";       //問題の文字列を格納
+var databasemondai = "";       //保存用の問題の文字列を格納
+var databasetyping = "";       //保存用の打ち込まれた文字列
+var database="";//最終的にjsonとして送るデータ
+var typing;//打ち込まれた文字列を１つずつ収納
+var cnt=0;             //何問目か格納
+var typStart,typEnd;   //開始時と終了時の時刻を格納
+var weight=[2,3,4,5,6,7,2,3,4,5,6];
+var endgame=0;//タイマーセット
+var gameend=0;//処理後にタイプしてもendgameが反応しないため
+var miss=0;//ミスした回数
+var missall=0;//ミスした合計回数
+var misstype = new Array();//ミスしたところ
+var cd;
+var startgame;
+var check=0;
+var continuegame=0;
+var firstback=1;//初めてbackspaceしたかどうかを調べる
+var correct=0;
+var correctall=0;
+var test=0;
+var xhr = new XMLHttpRequest();
+var cookiename = new Date();
+var GAMEcount=0;
+var cookies=[];
+var userid=0;
+var oneyear=31356e3;
+var docCookies = {
+  getItem: function (sKey) {
+    if (!sKey || !this.hasItem(sKey)) { return null; }
+    return unescape(document.cookie.replace(new RegExp("(?:^|.*;\\s*)" + escape(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*"), "$1"));
+  },
+  setItem: function (sKey, sValue, vEnd, sPath, sDomain, bSecure) {
+    if (!sKey || /^(?:expires|max\-age|path|domain|secure)$/i.test(sKey)) { return; }
+    var sExpires = "";
+    if (vEnd) {
+      switch (vEnd.constructor) {
+        case Number:
+          sExpires = vEnd === Infinity ? "; expires=Tue, 19 Jan 2038 03:14:07 GMT" : "; max-age=" + vEnd;
+          break;
+        case String:
+          sExpires = "; expires=" + vEnd;
+          break;
+        case Date:
+          sExpires = "; expires=" + vEnd.toGMTString();
+          break;
+      }
+    }
+    document.cookie = escape(sKey) + "=" + escape(sValue) + sExpires + (sDomain ? "; domain=" + sDomain : "") + (sPath ? "; path=" + sPath : "") + (bSecure ? "; secure" : "");
+  },
+  removeItem: function (sKey, sPath) {
+    if (!sKey || !this.hasItem(sKey)) { return; }
+    document.cookie = escape(sKey) + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT" + (sPath ? "; path=" + sPath : "");
+  },
+  hasItem: function (sKey) {
+    return (new RegExp("(?:^|;\\s*)" + escape(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=")).test(document.cookie);
+  },
+  keys: /* optional method: you can safely remove it! */ function () {
+    var aKeys = document.cookie.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, "").split(/\s*(?:\=[^;]*)?;\s*/);
+    for (var nIdx = 0; nIdx < aKeys.length; nIdx++) { aKeys[nIdx] = unescape(aKeys[nIdx]); }
+    return aKeys;
+  }
+};
+
+function setCookies()
+{
+    userid = docCookies.getItem("userid");
+    if (Number(userid) == 0) {
+	userid = Math.floor(Math.random()*1000000000);
+    }
+    docCookies.setItem("userid", userid, oneyear);
+    docCookies.setItem("old", document.form1.old.value, oneyear);
+    docCookies.setItem("gender", document.form1.gender.value, oneyear);
+    docCookies.setItem("keyboard", document.form1.gender.value, oneyear);
+}
+
+function setup()
+{
+    userid = docCookies.getItem("userid");
+    if (userid == null) {
+	userid = Math.floor(Math.random()*1000000000);
+	document.form1.gameset.style.display='none';
+	document.form1.regist.style.display='block';
+    } else {
+	document.getElementById("nendai").textContent = '';
+	document.getElementById("gender").textContent = '';
+	document.getElementById("keyboard").textContent = '';
+	document.form1.gameset.style.display='block';
+	document.form1.regist.style.display='none';
+	gameSet();
+    }
+}
+	
+function recorduser()
+{
+  if(document.form1.old.value!=""&&document.form1.gender.value!=""&&document.form1.keyboard.value!=""){
+      setCookies();
+    var shoken=
+      "{\""+"userid\":\""+ userid +"\",\""+"old\":\""+ document.form1.old.value +"\",\""+"gender\":\""+ document.form1.gender.value +"\",\""+"keyboard\":\""+ document.form1.keyboard.value +"\"}";
+        xhr.open("POST" , "/cgi-bin/setuser.cgi");
+        xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+
+      xhr.send(shoken);
+      document.getElementById("nendai").textContent = '';
+      document.getElementById("gender").textContent = '';
+      document.getElementById("keyboard").textContent = '';
+      document.form1.gameset.style.display='block';
+      document.form1.regist.style.display='none';
+      continuegame = 0;
+      gameSet();
+      
+  }
+  
+}
+
+//0～9までの乱数を3~10個作成して配列rndに格納する関数
+function ransu()
+{
+  var base = Math.floor(Math.random()*100000000000);//0~1の間の乱数を10^11する
+  if(check==0){
+      cd = (Math.floor(Math.random()*(10-3)))+4;
+  }
+  for(j=0;j<cd;++j){
+      rnd[cd-j] = Math.floor(base%10);
+      base = base/10;
+  }
+}
+
+//タイピングゲームの問題をセットする関数
+function gameSet()
+{  //カウント数をクリアする
+
+  GAMEcount++;
+  cnt=0;
+  startgame=0;
+  gameend=0;
+  //まずは問題文を作る
+  ransu();
+  databasemondai="";
+  databasetyping="";
+  document.getElementById("waku8").innerHTML = "";
+
+  //問題文をテーブルを使って表示。各セルはID名「word＋数字」を付す
+  mondai="<table class='Q'>";
+  typing="<table class='Q'>";
+  misss="<table class='Q'>";
+  for ( var j = 1 ; j < cd+1 ; j++ )
+  {
+    idnum =j;
+    mondai += "<td id='word"+idnum+"'>"+rnd[idnum]+"</td>";
+    databasemondai+=rnd[idnum];
+
+  }
+
+if(continuegame==0){
+    var start="スペースを押すとスタートします";
+    var kokuchi="今回は"+cd+"桁の数字です";
+    var kaisetsu="数字を最後まで打ち込んだらEnterを押してください. ";
+      var kaisetsu2="打ち間違えてもバックスペースを打てば失敗にカウントされません";
+      var onegai="バックスペースを押しても前のページに戻らないようにこのページを新しいタブで開いてください";
+  document.getElementById("waku").innerHTML = start;
+  document.getElementById("waku2").innerHTML = kokuchi;
+  document.getElementById("waku6").innerHTML = kaisetsu+kaisetsu2;
+  document.getElementById("waku7").innerHTML = onegai;;
+
+}
+else{
+  document.getElementById("waku").innerHTML = mondai;
+  document.getElementById("waku2").innerHTML = typing;
+
+}
+
+  document.getElementById("waku3").innerHTML = misss;
+
+//問題枠に表示する
+}
+
+//キー入力を受け取る関数
+function typeGame(evt)
+{
+if(startgame==0){
+    //入力されたキーのキーコードを取得//kcに代入
+    if (document.all)
+    {
+	kc[cnt] = event.keyCode;
+    }
+    else
+    {
+	kc[cnt] = evt.which;
+    }
+    if(kc[cnt]==32||check==1){//チェックされてるかスペース押されたら実行
+	if(endgame==0&&gameend==0){//初めて入力された時カウントはじめ
+            setTimeout("gameover()",mnt*1000);
+            time();
+            endgame=1;
+	}
+        if(kc[cnt]==32&&check==0){//スペース押されて未チェックだったら実行
+            typStart = new Date();
+
+            //問題をセットし表示する
+            check=1;
+            continuegame=1;
+            document.getElementById("waku").innerHTML = mondai;
+            document.getElementById("waku2").innerHTML = typing;
+            document.getElementById("waku6").innerHTML = "";
+            document.getElementById("waku7").innerHTML = "";
+	}
+	if(check==1&&(kc[cnt]==96||kc[cnt]==97||kc[cnt]==98||kc[cnt]==99||kc[cnt]==100||kc[cnt]==101||kc[cnt]==102||kc[cnt]==103||kc[cnt]==104||kc[cnt]==105)){
+            if ((kc[cnt] == kcode[ rnd[cnt+1] ])||((kc[cnt]-48) == kcode[ rnd[cnt+1] ])){//入力された文字と保存している文字が同じだったら
+		//以下、キーコードが一致した時の処理
+		//最初の1文字が入力された時間を記録する
+		typing += moji[kc[cnt]-96];
+		document.getElementById("waku2").innerHTML = typing;
+		document.getElementById("waku3").innerHTML = misss;
+		databasetyping+=moji[kc[cnt]-96];//保存用の、タイプしたデータ
+		notcorrect[cnt]=1;
+		correct++;
+		cnt++;//今実際にいる場所
+		firstback==1;
+            } else {
+		databasetyping+=moji[kc[cnt]-96];
+		misstype[cnt]=1;
+		miss++;
+		typing +=moji[kc[cnt]-96];
+		document.getElementById("waku2").innerHTML = typing;
+		document.getElementById("waku3").innerHTML = misss;
+		cnt++;
+		firstback==1;
+            }
+	} else if(check==1&&(kc[cnt]==8||kc[cnt]==13||kc[cnt]==48||kc[cnt]==49||kc[cnt]==50||kc[cnt]==51||kc[cnt]==52||kc[cnt]==53||kc[cnt]==54||kc[cnt]==55||kc[cnt]==56||kc[cnt]==57)){
+	    //入力されたキーコードと、問題文のキーコードを比較
+	    if ((kc[cnt] == kcode[ rnd[cnt+1] ])||((kc[cnt]-48) == kcode[ rnd[cnt+1] ])){//入力された文字と保存している文字が同じだったら
+		//以下、キーコードが一致した時の処理
+		//最初の1文字が入力された時間を記録する
+		typing += moji[ rnd[cnt+1] ];
+		document.getElementById("waku2").innerHTML = typing;
+		document.getElementById("waku3").innerHTML = misss;
+		databasetyping+=moji[ rnd[cnt+1] ];//保存用の、タイプしたデータ
+		notcorrect[cnt]=1;
+		correct++;
+		cnt++;//今実際にいる場所
+		firstback==1;
+	    } else if(kc[cnt] == 8) {
+		evt.preventDefault();
+		databasetyping+="B";
+		if(notcorrect[cnt-1]==1){
+		    correct--;
+		    notcorrect[cnt-1]=0;
+		}
+		if(cnt>0){
+		    typing = typing.slice(0,typing.length-1);
+		    cnt--;
+		    if(misstype[cnt]==1){
+			misstype[cnt]=0;
+			miss--;
+		    }
+		    document.getElementById("waku2").innerHTML = typing;
+		    document.getElementById("waku3").innerHTML = misss;
+		}
+	    }else if(kc[cnt]==13){
+		if(cnt == cd){
+		    if(miss==0){
+			correctall=correctall+correct;
+		    }
+		    for(j=0;j<cnt;j++){//ミスした回数を初期化
+			misstype[j]=0;
+		    }
+		    missall=missall+miss;
+		    miss=0;
+		    correct=0;
+		    typing="";
+		    database+=
+		    "{\""+"mondai\":\""+databasemondai+"\",\""+"typing\":\""+databasetyping+"\}\n";
+		    gameSet();
+		}else{
+		    databasetyping+="E";
+		}
+	    } else{
+		databasetyping+=kc[cnt]-48;
+
+		misstype[cnt]=1;
+		miss++;
+		typing +=kc[cnt]-48;
+		document.getElementById("waku2").innerHTML = typing;
+		document.getElementById("waku3").innerHTML = misss;
+		cnt++;
+		firstback==1
+	    }
+	}
+
+    }
+
+  }
+
+}
+function gameover(){
+
+     continuegame=0;
+      j = 0;
+      startgame=1;
+      check=0
+      missall=missall+miss;
+      correctall=correctall+correct;
+      //問題終了を告げる文字列を作成
+//        var fin="GAME終了　時間："+sec+"秒"+msec;
+        var fin2="失敗回数:"+missall+" 正解文字数:"+correctall;
+
+
+
+database+="{\""+"mondai\":\""+databasemondai+"\",\""+"typing\":\""+databasetyping+"\"}";
+
+        xhr.open("POST" , "/cgi-bin/mondai.cgi");
+        xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+        xhr.send(database);
+
+
+      //問題枠にゲーム終了を表示
+      document.getElementById("waku3").innerHTML = fin2;
+
+
+        miss=0;
+        missall=0;
+        endgame=0;
+        gameend=1;
+        correct=0;
+        GAMEcount=0;
+        correctall=0;
+        database="";
+
+}
+
+setInterval(function (){
+  // 停止中なら処理をしない
+  if(endgame==1){
+
+  // 経過時間を表示
+  time();
+}else{
+  var fin="";
+  document.getElementById("waku8").innerHTML = fin;
+}
+
+
+},1000/60);
+
+function time(){
+  typEnd = new Date();
+  //終了時間－開始時間で掛かったミリ秒を取得する
+  var keika = typEnd - typStart;
+
+  //1000で割って「切捨て」、秒数を取得
+  var sec = Math.floor( keika/1000 );
+
+  //1000で割った「余り(%で取得できる）」でミリ秒を取得
+  var msec = keika % 1000;
+
+        sec=59-sec;
+
+        //1000で割った「余り(%で取得できる）」でミリ秒を取得
+        var msec = keika % 1000;
+        msec=1000-msec;
+  var fin="残り時間:"+sec+"秒"+msec;
+  document.getElementById("waku8").innerHTML = fin;
+}
+ </script>
+
+<style type="text/css">
+<!--
+table.Q td
+{
+  width:20px;
+  height:20px;
+  font-size:18pt;
+  text-align:center;
+}
+
+-->
+</style>
+
+</head>
+<body onLoad="setup()">
+<h1>typinggame</h1>
+
+<form name="form1" action="">
+  <div id="waku"></div>
+  <div id="waku2"></div>
+  <div id="waku3"></div>
+  <div id="waku6"></div>
+  <div id="waku7"></div>
+  <div id="waku8"></div>
+
+  <div id="nendai" class="test">
+       <p class="control-label"><b>年齢</b></p>
+       <div class="radio-inline">
+         <input type="radio" value="10" name="old">
+           <label>10代以下</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="20" name="old">
+         <label>20代</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="30" name="old">
+         <label>30代</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="40" name="old">
+         <label>40代</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="50" name="old">
+         <label>50代</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="60" name="old">
+         <label>60代以上</label>
+       </div>
+     </div>
+  <div id="gender" class="test">
+       <p class="control-label"><b>性別</b></p>
+       <div class="radio-inline">
+         <input type="radio" value="man" name="gender" id="man">
+           <label for="man">男性</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="woman" name="gender" id="woman">
+         <label for="woman">女性</label>
+       </div>
+     </div>
+  <div id="keyboard" class="test">
+       <p class="control-label"><b>使用するキーボード</b></p>
+       <div class="radio-inline">
+         <input type="radio" value="fullkey" name="keyboard" id="man">
+           <label>フルキー(数字が1234567890のように横並びになっている並び)</label>
+       </div>
+       <div class="radio-inline">
+         <input type="radio" value="tenkey" name="keyboard" id="woman">
+         <label>テンキー(電卓の数字の並び)</label>
+       </div>
+     </div>
+  <input type ="button"name="regist"   value="登録" onClick="recorduser()">
+  <input type="button" name="gameset" value="問題初期化" onclick="gameSet()"><br>
+
+
+<!--
+<form method="POST" action="cgi-bin/response.asp" name="Form">
+    <input type="text" name="txtName" size="40" maxlength="40">
+    <br>
+    <input type="submit" value="送信" name="btnSubit">
+    <input type="reset" value="リセット" name="btnReset">
+</form>
+-->
+
+</body>
+</html>
